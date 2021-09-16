@@ -16,7 +16,7 @@ const (
 )
 
 const (
-	tileSize = 24
+	tileSize = 48
 )
 
 var (
@@ -39,28 +39,48 @@ func init() {
 	mainCharacterImage = mainCharacterEbitenImage
 }
 
-type MainCharacter struct {
-	X float32
-	Y float32
-}
-
 type Game struct {
 	layers        [][]int
-	MainCharacter MainCharacter
+	mainCharacter mainCharacter
+	state         State
+	worldSpeed    float64
 }
 
 func (g *Game) Update() error {
+
+	switch g.state {
+	case WaitPlayerAction:
+		checkAction(g)
+	case AnimatePlayerAction:
+		animate(g)
+	case WaitWorldAction:
+		worldAction(g)
+	case AnimateWorldAction:
+		animationWorld(g)
+	}
+
+	if g.state == WaitPlayerAction {
+		//keyboard
+	}
 	return nil
+}
+
+func  worldAction(g *Game){
+	g.state = AnimateWorldAction
+}
+
+func animationWorld(g *Game){
+	g.state = WaitPlayerAction
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 
-	halfHeightScreen := float32(screenHeight / 2)
-	yStart, yStop := (g.MainCharacter.Y-halfHeightScreen)/tileSize, (g.MainCharacter.Y+halfHeightScreen)/tileSize
-	halfWidthScreen := float32(screenWidth / 2)
-	xStart, xStop := (g.MainCharacter.X-halfWidthScreen)/tileSize, (g.MainCharacter.Y+halfWidthScreen)/tileSize
+	halfHeightScreen := float64(screenHeight / 2)
 
-	
+	yStart, yStop := (g.mainCharacter.position.y-halfHeightScreen)/tileSize, (g.mainCharacter.position.y+halfHeightScreen)/tileSize
+	halfWidthScreen := float64(screenWidth / 2)
+	xStart, xStop := (g.mainCharacter.position.x-halfWidthScreen)/tileSize, (g.mainCharacter.position.x+halfWidthScreen)/tileSize
+
 	//Y tiles
 	for i := yStart; i < yStop; i++ {
 		//X tiles
@@ -84,7 +104,7 @@ func drawCharacter(g *Game) (*ebiten.Image, *ebiten.DrawImageOptions) {
 	//put the char in the center of div
 
 	opChar := &ebiten.DrawImageOptions{}
-	opChar.GeoM.Translate(screenWidth/2, screenHeight/2)
+	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y))
 	//opChar.GeoM.Scale(4,4)
 
 	return mainCharacterImage.SubImage(image.Rect(0, 0, 32, 48)).(*ebiten.Image), opChar
@@ -96,7 +116,7 @@ func getTileCoordinate(i int) (int, int) {
 	if i == 1 {
 		return 0, 0
 	}
-	return 24, 0
+	return 48, 0
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -105,6 +125,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 func main() {
 	g := &Game{
+		state: WaitPlayerAction,
 		layers: [][]int{
 			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
 			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
@@ -135,10 +156,18 @@ func main() {
 			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
 			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
 		},
-		MainCharacter: MainCharacter{
-			X: screenWidth / 2,
-			Y: screenHeight / 2,
+		mainCharacter: mainCharacter{
+			position: coordinate{
+				x: (screenWidth / 2) + tileSize/4,
+				y: (screenHeight / 2),
+			},
+			destination: coordinate{
+				x: (screenWidth / 2) + tileSize/4,
+				y: (screenHeight / 2),
+			},
 		},
+
+		worldSpeed: 1,
 	}
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)
