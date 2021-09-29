@@ -11,6 +11,7 @@ type coordinate struct {
 }
 
 //TODO if no need to moove, gresille
+//TODO if g.worldSpeed to big, we could go over the destination
 func (c *mainCharacter) animate(g *Game) {
 	//moove
 	if c.position.x == c.destination.x && c.position.y == c.destination.y {

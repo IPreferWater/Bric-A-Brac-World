@@ -41,6 +41,8 @@ func init() {
 
 type Game struct {
 	layers        [][]int
+	mapCenterX    float64
+	mapCenterY    float64
 	mainCharacter mainCharacter
 	state         State
 	worldSpeed    float64
@@ -65,39 +67,45 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func  worldAction(g *Game){
+func worldAction(g *Game) {
 	g.state = AnimateWorldAction
 }
 
-func animationWorld(g *Game){
+func animationWorld(g *Game) {
 	g.state = WaitPlayerAction
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	//guess coordinate in matrice
+	//yM:= screenWidth % int(g.mainCharacter.position.y)
+	xT := int(g.mainCharacter.position.x / tileSize)
+	yT := int(g.mainCharacter.position.y / tileSize)
 
-	halfHeightScreen := float64(screenHeight / 2)
+	//TODO can be calculated once
+	xNum := screenWidth / tileSize
+	yNum := screenHeight / tileSize
 
-	yStart, yStop := (g.mainCharacter.position.y-halfHeightScreen)/tileSize, (g.mainCharacter.position.y+halfHeightScreen)/tileSize
-	halfWidthScreen := float64(screenWidth / 2)
-	xStart, xStop := (g.mainCharacter.position.x-halfWidthScreen)/tileSize, (g.mainCharacter.position.x+halfWidthScreen)/tileSize
+	// -1 for the split one
+	yTileGlogal := (float64(yT) * tileSize) - g.mainCharacter.position.y
+	xTileGlogal := (float64(xT) * tileSize) - g.mainCharacter.position.x
 
-	//Y tiles
-	for i := yStart; i < yStop; i++ {
-		//X tiles
-		for j := xStart; j < xStop; j++ {
+	jMax := 0
+	for j := yT - (yNum / 2) - 1; j <= yT+(yNum/2)-1; j++ {
+		iMax := 0
+		for i := xT - (xNum / 2) - 1; i <= xT+(xNum/2)-1; i++ {
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(j-xStart)*tileSize, float64(i-yStart)*tileSize)
-
-			tile := g.layers[int(i)][int(j)]
+			tile := g.layers[j][i]
+			op.GeoM.Translate(float64(iMax)*tileSize+xTileGlogal, float64(jMax)*tileSize+yTileGlogal)
 			sx, sy := getTileCoordinate(tile)
 			screen.DrawImage(tilesImage.SubImage(image.Rect(sx, sy, sx+tileSize, sy+tileSize)).(*ebiten.Image), op)
+			iMax++
 		}
+		jMax++
 	}
-
 	characterDraw, charOpts := drawCharacter(g)
 	screen.DrawImage(characterDraw, charOpts)
 
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n xT: %d, yT %d, xNum %d, yNum %d\n charX %f charY %f", ebiten.CurrentTPS(), xT, yT, xNum, yNum, g.mainCharacter.position.x, g.mainCharacter.position.y))
 }
 
 func drawCharacter(g *Game) (*ebiten.Image, *ebiten.DrawImageOptions) {
@@ -116,7 +124,17 @@ func getTileCoordinate(i int) (int, int) {
 	if i == 1 {
 		return 0, 0
 	}
-	return 48, 0
+
+	if i == 2 {
+		return 48, 0
+	}
+
+	if i == 6 {
+		return 96, 48
+	}
+
+	return 48, 48
+
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -129,14 +147,14 @@ func main() {
 		layers: [][]int{
 			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
 			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
+			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 5, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
+			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 5, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
+			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 5, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
+			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 5, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
+			{1, 2, 5, 2, 1, 2, 1, 2, 1, 6, 5, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
+			{2, 1, 5, 5, 5, 5, 2, 1, 5, 1, 5, 5, 5, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
+			{1, 2, 1, 2, 1, 2, 1, 2, 5, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
+			{2, 5, 5, 5, 5, 5, 2, 1, 5, 5, 5, 5, 5, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
 			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
 			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
 			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
@@ -156,14 +174,16 @@ func main() {
 			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
 			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
 		},
+		mapCenterX: 9,
+		mapCenterY: 6,
 		mainCharacter: mainCharacter{
 			position: coordinate{
-				x: (screenWidth / 2) + tileSize/4,
-				y: (screenHeight / 2),
+				x: 9 * tileSize,
+				y: 6 * tileSize,
 			},
 			destination: coordinate{
-				x: (screenWidth / 2) + tileSize/4,
-				y: (screenHeight / 2),
+				x: 9 * tileSize,
+				y: 6 * tileSize,
 			},
 		},
 
