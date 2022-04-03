@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"image"
+	"image/color"
 	_ "image/png"
 	"log"
 
@@ -46,94 +46,107 @@ type Game struct {
 	mainCharacter mainCharacter
 	state         State
 	worldSpeed    float64
+	frame      int
 }
 
 func (g *Game) Update() error {
+	checkAction(g)
 
-	switch g.state {
-	case WaitPlayerAction:
-		checkAction(g)
-	case AnimatePlayerAction:
-		animate(g)
-	case WaitWorldAction:
-		worldAction(g)
-	case AnimateWorldAction:
-		animationWorld(g)
+	g.frame++
+	weaveUpdate := false
+	if g.frame%12 == 0 {
+		weaveUpdate = true
+		g.frame = 0
 	}
 
-	if g.state == WaitPlayerAction {
-		//keyboard
+	m := g.mainCharacter
+
+	//stoped to weave, do something
+	if m.weave.isWeaving == false && len(m.weave.coordinates) > 0 {
+		g.mainCharacter.weave.coordinates = nil
+	}
+
+	if m.weave.isWeaving {
+		if weaveUpdate {
+			g.mainCharacter.weave.coordinates = append(m.weave.coordinates, coordinate{
+				x: m.position.x,
+				y: m.position.y,
+			})
+		}
+
+		
 	}
 	return nil
 }
-
-func worldAction(g *Game) {
-	g.state = AnimateWorldAction
-}
-
-func animationWorld(g *Game) {
-	g.state = WaitPlayerAction
-}
-
-func (g *Game) Draw(screen *ebiten.Image) {
-	//guess coordinate in matrice
-	//yM:= screenWidth % int(g.mainCharacter.position.y)
-	xT := int(g.mainCharacter.position.x / tileSize)
-	yT := int(g.mainCharacter.position.y / tileSize)
-
-	//TODO can be calculated once
-	xNum := screenWidth / tileSize
-	yNum := screenHeight / tileSize
-
-	// -1 for the split one
-	yTileGlogal := (float64(yT) * tileSize) - g.mainCharacter.position.y
-	xTileGlogal := (float64(xT) * tileSize) - g.mainCharacter.position.x
-
-	jMax := 0
-	for j := yT - (yNum / 2) - 1; j <= yT+(yNum/2)-1; j++ {
-		iMax := 0
-		for i := xT - (xNum / 2) - 1; i <= xT+(xNum/2)-1; i++ {
-			op := &ebiten.DrawImageOptions{}
-			tile := g.layers[j][i]
-			op.GeoM.Translate(float64(iMax)*tileSize+xTileGlogal, float64(jMax)*tileSize+yTileGlogal)
-			sx, sy := getTileCoordinate(tile)
-			screen.DrawImage(tilesImage.SubImage(image.Rect(sx, sy, sx+tileSize, sy+tileSize)).(*ebiten.Image), op)
-			iMax++
-		}
-		jMax++
+func drawWeaving(xChar, yChar float64, weaves []coordinate,screen *ebiten.Image) {
+	//TODO why reverse ?
+	/*for i := len(weaves) - 1; i >= 0; i-- {
+		
+		coordinate := weaves[i]
+		//vertical or horizontal ?
+		//width := xChar - coordinate.x
+		//height := yChar - coordinate.y
+		weaveToDraw := ebiten.NewImage(16, 16)
+		
+		opChar := &ebiten.DrawImageOptions{}
+		weaveToDraw.Fill(color.RGBA{
+			R: 193,
+			G: 136,
+			B: 70,
+			A: 0,
+		})
+		opChar.GeoM.Translate(coordinate.x, coordinate.y)
+		screen.DrawImage(weaveToDraw, opChar)
+	}*/
+	for _, c := range weaves {
+		fmt.Printf("need to draw weave x %f y %f\n",c.x, c.y)
+		weaveToDraw := ebiten.NewImage(16, 16)
+		opChar := &ebiten.DrawImageOptions{}
+		/*weaveToDraw.Fill(color.RGBA{
+			R: 193,
+			G: 136,
+			B: 70,
+			A: 0,
+		})*/
+		weaveToDraw.Fill(color.White)
+		opChar.GeoM.Translate(c.x, c.y)
+		screen.DrawImage(weaveToDraw, opChar)
+		//TODO not working well, must construct one single image, vertex ?
 	}
+}
+
+func (g *Game) Draw(screen *ebiten.Image){
+	screen.Fill(color.RGBA{
+		R: 13,
+		G: 17,
+		B: 23,
+		A: 0,
+	})
 	characterDraw, charOpts := drawCharacter(g)
 	screen.DrawImage(characterDraw, charOpts)
 
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n xT: %d, yT %d, xNum %d, yNum %d\n charX %f charY %f", ebiten.CurrentTPS(), xT, yT, xNum, yNum, g.mainCharacter.position.x, g.mainCharacter.position.y))
+	square := ebiten.NewImage(16, 16)
+	opChar := &ebiten.DrawImageOptions{}
+	square.Fill(color.White)
+	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y))
+	//weaves
+	if len(g.mainCharacter.weave.coordinates)>0 {
+		drawWeaving(g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.weave.coordinates, screen)
+	}
+	
+
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n , charX %f charY %f", ebiten.CurrentTPS(), g.mainCharacter.position.x, g.mainCharacter.position.y))
 }
 
 func drawCharacter(g *Game) (*ebiten.Image, *ebiten.DrawImageOptions) {
 	//put the char in the center of div
+	square := ebiten.NewImage(16, 16)
 
 	opChar := &ebiten.DrawImageOptions{}
+	square.Fill(color.White)
 	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y))
-	//opChar.GeoM.Scale(4,4)
 
-	return mainCharacterImage.SubImage(image.Rect(0, 0, 32, 48)).(*ebiten.Image), opChar
-
-}
-
-//TODO
-func getTileCoordinate(i int) (int, int) {
-	if i == 1 {
-		return 0, 0
-	}
-
-	if i == 2 {
-		return 48, 0
-	}
-
-	if i == 6 {
-		return 96, 48
-	}
-
-	return 48, 48
+	return square, opChar
 
 }
 
@@ -142,48 +155,18 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func main() {
+
 	g := &Game{
 		state: WaitPlayerAction,
-		layers: [][]int{
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 5, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 5, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 5, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 5, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 5, 2, 1, 2, 1, 2, 1, 6, 5, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 5, 5, 5, 5, 2, 1, 5, 1, 5, 5, 5, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 5, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 5, 5, 5, 5, 5, 2, 1, 5, 5, 5, 5, 5, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-			{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
-			{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1},
-		},
-		mapCenterX: 9,
-		mapCenterY: 6,
 		mainCharacter: mainCharacter{
 			position: coordinate{
-				x: 9 * tileSize,
-				y: 6 * tileSize,
+				x: 0,
+				y: 0,
 			},
-			destination: coordinate{
-				x: 9 * tileSize,
-				y: 6 * tileSize,
+			speed: 1,
+			weave: weave{
+				isWeaving:   false,
+				coordinates: make([]coordinate, 0),
 			},
 		},
 
