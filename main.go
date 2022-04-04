@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	_ "image/png"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 const (
@@ -46,7 +48,7 @@ type Game struct {
 	mainCharacter mainCharacter
 	state         State
 	worldSpeed    float64
-	frame      int
+	frame         int
 }
 
 func (g *Game) Update() error {
@@ -54,7 +56,7 @@ func (g *Game) Update() error {
 
 	g.frame++
 	weaveUpdate := false
-	if g.frame%12 == 0 {
+	if g.frame%40 == 0 {
 		weaveUpdate = true
 		g.frame = 0
 	}
@@ -62,7 +64,7 @@ func (g *Game) Update() error {
 	m := g.mainCharacter
 
 	//stoped to weave, do something
-	if m.weave.isWeaving == false && len(m.weave.coordinates) > 0 {
+	if !m.weave.isWeaving && len(m.weave.coordinates) > 0 {
 		g.mainCharacter.weave.coordinates = nil
 	}
 
@@ -74,48 +76,46 @@ func (g *Game) Update() error {
 			})
 		}
 
-		
 	}
 	return nil
 }
-func drawWeaving(xChar, yChar float64, weaves []coordinate,screen *ebiten.Image) {
-	//TODO why reverse ?
-	/*for i := len(weaves) - 1; i >= 0; i-- {
-		
-		coordinate := weaves[i]
-		//vertical or horizontal ?
-		//width := xChar - coordinate.x
-		//height := yChar - coordinate.y
-		weaveToDraw := ebiten.NewImage(16, 16)
-		
-		opChar := &ebiten.DrawImageOptions{}
-		weaveToDraw.Fill(color.RGBA{
-			R: 193,
-			G: 136,
-			B: 70,
-			A: 0,
-		})
-		opChar.GeoM.Translate(coordinate.x, coordinate.y)
-		screen.DrawImage(weaveToDraw, opChar)
-	}*/
-	for _, c := range weaves {
-		fmt.Printf("need to draw weave x %f y %f\n",c.x, c.y)
-		weaveToDraw := ebiten.NewImage(16, 16)
-		opChar := &ebiten.DrawImageOptions{}
-		/*weaveToDraw.Fill(color.RGBA{
-			R: 193,
-			G: 136,
-			B: 70,
-			A: 0,
-		})*/
-		weaveToDraw.Fill(color.White)
-		opChar.GeoM.Translate(c.x, c.y)
-		screen.DrawImage(weaveToDraw, opChar)
-		//TODO not working well, must construct one single image, vertex ?
+func drawWeaving(xChar, yChar float64, weaves []coordinate, screen *ebiten.Image) {
+
+	var pathW vector.Path
+	for index, c := range weaves {
+		if index == 0 {
+			pathW.MoveTo(float32(c.x), float32(c.y))
+			continue
+		}
+
+		pathW.LineTo(float32(c.x), float32(c.y))
 	}
+
+	for i := len(weaves) - 1; i >= 0; i-- {
+		weave := weaves[i]
+		pathW.LineTo(float32(weave.x)+10, float32(weave.y)+10)
+	}
+
+	emptyImage := ebiten.NewImage(3, 3)
+	emptyImage.Fill(color.White)
+	emptySubImage := emptyImage.SubImage(image.Rect(1, 1, 2, 2)).(*ebiten.Image)
+
+
+	op := &ebiten.DrawTrianglesOptions{
+		FillRule: ebiten.EvenOdd,
+	}
+	vs, is := pathW.AppendVerticesAndIndicesForFilling(nil, nil)
+	for i := range vs {
+		vs[i].SrcX = 1
+		vs[i].SrcY = 1
+		vs[i].ColorR = 0xdb / float32(0xff)
+		vs[i].ColorG = 0x56 / float32(0xff)
+		vs[i].ColorB = 0x20 / float32(0xff)
+	}
+	screen.DrawTriangles(vs, is, emptySubImage, op)
 }
 
-func (g *Game) Draw(screen *ebiten.Image){
+func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{
 		R: 13,
 		G: 17,
@@ -130,10 +130,10 @@ func (g *Game) Draw(screen *ebiten.Image){
 	square.Fill(color.White)
 	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y))
 	//weaves
-	if len(g.mainCharacter.weave.coordinates)>0 {
+	if len(g.mainCharacter.weave.coordinates) > 0 {
 		drawWeaving(g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.weave.coordinates, screen)
 	}
-	
+
 
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n , charX %f charY %f", ebiten.CurrentTPS(), g.mainCharacter.position.x, g.mainCharacter.position.y))
 }
