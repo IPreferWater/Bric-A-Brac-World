@@ -6,6 +6,7 @@ import (
 	"image/color"
 	_ "image/png"
 	"log"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -22,8 +23,8 @@ const (
 )
 
 var (
-	tilesImage         *ebiten.Image
-	mainCharacterImage *ebiten.Image
+	tilesImage  *ebiten.Image
+	insectImage *ebiten.Image
 )
 
 func init() {
@@ -32,13 +33,13 @@ func init() {
 		log.Fatal(err)
 	}
 
-	mainCharacterEbitenImage, _, err := ebitenutil.NewImageFromFile("./res/main_character.png")
+	insectImageEbitenImage, _, err := ebitenutil.NewImageFromFile("./res/insect.png")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	tilesImage = tilesEbitenImage
-	mainCharacterImage = mainCharacterEbitenImage
+	insectImage = insectImageEbitenImage
 }
 
 type Game struct {
@@ -47,6 +48,7 @@ type Game struct {
 	mapCenterY    float64
 	mainCharacter mainCharacter
 	state         State
+	size float64
 	worldSpeed    float64
 	frame         int
 }
@@ -56,7 +58,7 @@ func (g *Game) Update() error {
 
 	g.frame++
 	weaveUpdate := false
-	if g.frame%40 == 0 {
+	if g.frame%12 == 0 {
 		weaveUpdate = true
 		g.frame = 0
 	}
@@ -80,26 +82,60 @@ func (g *Game) Update() error {
 	return nil
 }
 func drawWeaving(xChar, yChar float64, weaves []coordinate, screen *ebiten.Image) {
+	arr := make([]coordinate, 0)
 
+	charSize := 10
 	var pathW vector.Path
 	for index, c := range weaves {
 		if index == 0 {
-			pathW.MoveTo(float32(c.x), float32(c.y))
+			pathW.MoveTo(float32(c.x)-float32(charSize), float32(c.y))
+			pathW.LineTo(float32(c.x)-float32(charSize), float32(c.y))
+
+			arr = append(arr, coordinate{x: c.x + float64(charSize), y: c.y})
+			continue
+		}
+		previous := weaves[index-1]
+
+		//didn't moove
+		if previous.x == c.x && previous.y == c.y {
+			//do nothing
 			continue
 		}
 
-		pathW.LineTo(float32(c.x), float32(c.y))
+		// moved only on x value
+		if previous.x != c.x && previous.y == c.y {
+			pathW.LineTo(float32(c.x), float32(c.y)-float32(charSize))
+			arr = append(arr, coordinate{x: c.x, y: c.y + float64(charSize)})
+			continue
+		}
+
+		// moved only on y value
+		if previous.x == c.x && previous.y != c.y {
+			pathW.LineTo(float32(c.x)-float32(charSize), float32(c.y))
+			arr = append(arr, coordinate{x: c.x + float64(charSize), y: c.y})
+			continue
+		}
+
+		// up right
+		//if previous.x < c.x && previous.y > c.y {
+		pathW.LineTo(float32(c.x)-float32(charSize), float32(c.y))
+		arr = append(arr, coordinate{x: c.x + float64(charSize), y: c.y})
+		//		continue
+		//	}
 	}
 
-	for i := len(weaves) - 1; i >= 0; i-- {
-		weave := weaves[i]
-		pathW.LineTo(float32(weave.x)+10, float32(weave.y)+10)
+	for i := len(arr) - 1; i >= 0; i-- {
+		pathW.LineTo(float32(arr[i].x), float32(arr[i].y))
 	}
+
+	//for i := len(weaves) - 1; i >= 0; i-- {
+	//weave := weaves[i]
+	//pathW.LineTo(float32(weave.x)+float32(charSize), float32(weave.y))
+	//}
 
 	emptyImage := ebiten.NewImage(3, 3)
 	emptyImage.Fill(color.White)
 	emptySubImage := emptyImage.SubImage(image.Rect(1, 1, 2, 2)).(*ebiten.Image)
-
 
 	op := &ebiten.DrawTrianglesOptions{
 		FillRule: ebiten.EvenOdd,
@@ -134,20 +170,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		drawWeaving(g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.weave.coordinates, screen)
 	}
 
-
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n , charX %f charY %f", ebiten.CurrentTPS(), g.mainCharacter.position.x, g.mainCharacter.position.y))
 }
 
 func drawCharacter(g *Game) (*ebiten.Image, *ebiten.DrawImageOptions) {
-	//put the char in the center of div
-	square := ebiten.NewImage(16, 16)
-
 	opChar := &ebiten.DrawImageOptions{}
-	square.Fill(color.White)
-	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y))
+	opChar.GeoM.Translate(-(g.mainCharacter.size/2), -(g.mainCharacter.size/2))
+	opChar.GeoM.Rotate(g.mainCharacter.angle * 2 * math.Pi / 360)
+	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y)-(g.mainCharacter.size/2))
 
-	return square, opChar
-
+	return insectImage, opChar
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -160,10 +192,13 @@ func main() {
 		state: WaitPlayerAction,
 		mainCharacter: mainCharacter{
 			position: coordinate{
-				x: 0,
-				y: 0,
+				x: screenWidth / 2,
+				y: screenHeight / 2,
 			},
-			speed: 1,
+			speed:      2,
+			angle:      0,
+			angleSpeed: 4,
+			size: 40,
 			weave: weave{
 				isWeaving:   false,
 				coordinates: make([]coordinate, 0),
