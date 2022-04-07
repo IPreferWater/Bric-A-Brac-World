@@ -114,19 +114,22 @@ func drawWeaving(xChar, yChar, angle float64, weaves []weavePoint, screen *ebite
 	var pathW vector.Path
 	for index, c := range weaves {
 
-		xx:=  c.x + math.Cos(c.angle)/360 
-		yy:=  c.y + math.Sin(c.angle)/360 
+		x1:=  c.x-4 + math.Cos(c.angle)/360 
+		y1:=  c.y-4 + math.Sin(c.angle)/360 
+
+		x2:=  c.x+4 + math.Cos(c.angle)/360 
+		y2:=  c.y+4 + math.Sin(c.angle)/360 
 
 	if index == 0 {
-		pathW.MoveTo(float32(xx), float32(yy))
-		pathW.LineTo(float32(xx), float32(yy))
+		pathW.MoveTo(float32(x1), float32(y1))
+		pathW.LineTo(float32(x1), float32(y1))
 
-		arr = append(arr, coordinate{x: xx , y: yy})
+		arr = append(arr, coordinate{x: x2 , y: y2})
 		continue
 	}
-		pathW.LineTo(float32(xx)+10, float32(yy)+10)
+		pathW.LineTo(float32(x1), float32(y1))
 
-		arr = append(arr, coordinate{x: xx - 10, y: yy - 10})	
+		arr = append(arr, coordinate{x: x2 , y: y2})	
 	}
 
 	/*pathW.MoveTo(80, 170)
