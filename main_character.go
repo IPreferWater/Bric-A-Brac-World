@@ -12,10 +12,16 @@ type mainCharacter struct {
 
 type weave struct {
 	isWeaving bool
-	coordinates []coordinate
+	weavePoints []weavePoint
 }
 
 type coordinate struct {
 	x float64
 	y float64
+}
+
+type weavePoint struct {
+	x float64
+	y float64
+	angle float64
 }

@@ -48,7 +48,7 @@ type Game struct {
 	mapCenterY    float64
 	mainCharacter mainCharacter
 	state         State
-	size float64
+	size          float64
 	worldSpeed    float64
 	frame         int
 }
@@ -58,7 +58,8 @@ func (g *Game) Update() error {
 
 	g.frame++
 	weaveUpdate := false
-	if g.frame%12 == 0 {
+	//TODO remove weaveUpdate, do it at each frame
+	if g.frame%1 == 0 {
 		weaveUpdate = true
 		g.frame = 0
 	}
@@ -66,22 +67,46 @@ func (g *Game) Update() error {
 	m := g.mainCharacter
 
 	//stoped to weave, do something
-	if !m.weave.isWeaving && len(m.weave.coordinates) > 0 {
-		g.mainCharacter.weave.coordinates = nil
+	if !m.weave.isWeaving && len(m.weave.weavePoints) > 0 {
+		g.mainCharacter.weave.weavePoints = nil
 	}
 
 	if m.weave.isWeaving {
 		if weaveUpdate {
-			g.mainCharacter.weave.coordinates = append(m.weave.coordinates, coordinate{
-				x: m.position.x,
-				y: m.position.y,
-			})
+			
+			indexlastWeavePoint := len(m.weave.weavePoints)-1
+
+			//TODO not beautifull ...
+			// we need to set the starting point to set where be begin to draw the path
+			// after that, we can simply update the drawTo if same angle
+			if indexlastWeavePoint<2 {
+				g.mainCharacter.weave.weavePoints = append(m.weave.weavePoints, weavePoint{
+					x:     m.position.x,
+					y:     m.position.y,
+					angle: m.angle,
+				})
+				return nil
+			}
+				previous := m.weave.weavePoints[indexlastWeavePoint]
+				//if same angle, just continue the vector
+				if  previous.angle == m.angle {
+					g.mainCharacter.weave.weavePoints[indexlastWeavePoint].x=m.position.x
+					g.mainCharacter.weave.weavePoints[indexlastWeavePoint].y=m.position.y
+					return nil
+				} 
+
+				// if angle changed, just add the new point
+				g.mainCharacter.weave.weavePoints = append(m.weave.weavePoints, weavePoint{
+					x:     m.position.x,
+					y:     m.position.y,
+					angle: m.angle,
+				})
 		}
 
 	}
 	return nil
 }
-func drawWeaving(xChar, yChar float64, weaves []coordinate, screen *ebiten.Image) {
+func drawWeaving(xChar, yChar float64, weaves []weavePoint, screen *ebiten.Image) {
 	arr := make([]coordinate, 0)
 
 	charSize := 10
@@ -95,12 +120,6 @@ func drawWeaving(xChar, yChar float64, weaves []coordinate, screen *ebiten.Image
 			continue
 		}
 		previous := weaves[index-1]
-
-		//didn't moove
-		if previous.x == c.x && previous.y == c.y {
-			//do nothing
-			continue
-		}
 
 		// moved only on x value
 		if previous.x != c.x && previous.y == c.y {
@@ -166,8 +185,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	square.Fill(color.White)
 	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y))
 	//weaves
-	if len(g.mainCharacter.weave.coordinates) > 0 {
-		drawWeaving(g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.weave.coordinates, screen)
+	if len(g.mainCharacter.weave.weavePoints) > 0 {
+		drawWeaving(g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.weave.weavePoints, screen)
 	}
 
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n , charX %f charY %f", ebiten.CurrentTPS(), g.mainCharacter.position.x, g.mainCharacter.position.y))
@@ -175,7 +194,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func drawCharacter(g *Game) (*ebiten.Image, *ebiten.DrawImageOptions) {
 	opChar := &ebiten.DrawImageOptions{}
-	opChar.GeoM.Translate(-(g.mainCharacter.size/2), -(g.mainCharacter.size/2))
+	opChar.GeoM.Translate(-(g.mainCharacter.size / 2), -(g.mainCharacter.size / 2))
 	opChar.GeoM.Rotate(g.mainCharacter.angle * 2 * math.Pi / 360)
 	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y)-(g.mainCharacter.size/2))
 
@@ -198,10 +217,10 @@ func main() {
 			speed:      2,
 			angle:      0,
 			angleSpeed: 4,
-			size: 40,
+			size:       40,
 			weave: weave{
 				isWeaving:   false,
-				coordinates: make([]coordinate, 0),
+				weavePoints: make([]weavePoint, 0),
 			},
 		},
 
