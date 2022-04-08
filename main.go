@@ -59,7 +59,7 @@ func (g *Game) Update() error {
 	g.frame++
 	weaveUpdate := false
 	//TODO remove weaveUpdate, do it at each frame
-	if g.frame%60 == 0 {
+	if g.frame%1 == 0 {
 		weaveUpdate = true
 		g.frame = 0
 	}
@@ -107,44 +107,40 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func drawWeaving(wide, angle float64, weaves []weavePoint, screen *ebiten.Image) {
+//TODO
+/*func getRotationCoordonates(x,y,angle, xDistanceFromOrigin, yDistanceFromOrigin, recenterValue float64)(float64,float64) {
+	angleRadian := angle * (math.Pi / 180)
+	return (math.Cos(angleRadian) * xDistanceFromOrigin) - (math.Sin(angleRadian) * yDistanceFromOrigin) + x - recenterValue, (math.Sin(angleRadian) * xDistanceFromOrigin) + (math.Cos(angleRadian) * yDistanceFromOrigin) + y
+}*/
+func drawWeaving(wide float64, weaves []weavePoint, screen *ebiten.Image) {
 	arr := make([]coordinate, 0)
 
 	charSize := float64(40)
 	var pathW vector.Path
+	wideWailing := float64(10)
+		distanceInsectBack := float64(-20)
 	for index, c := range weaves {
 
-		x1:=  c.x - charSize
-		y1:=  c.y - wide/2
+		//formula https://gamefromscratch.com/gamedev-math-recipes-rotating-one-point-around-another-point/
+		angleRadian := c.angle * (math.Pi / 180)
+	//	addPointForDebugWailing(angleRadian, c.x, c.y, charSize, distanceInsectBack, wideWailing, screen)
+		// -charSize/2 because we need to recenter the point in the middle of the image
+	/*	x1, y1 := getRotationCoordonates(c.x,c.y,c.angle,distanceInsectBack,-wideWailing, -charSize/2)
+		x2, y2 := getRotationCoordonates(c.x,c.y,c.angle,distanceInsectBack,wideWailing, -charSize/2)*/
+		x1 := (math.Cos(angleRadian) * distanceInsectBack) - (math.Sin(angleRadian) * -wideWailing) + c.x - charSize/2
+		y1 := (math.Sin(angleRadian) * distanceInsectBack) + (math.Cos(angleRadian) * -wideWailing) + c.y
+		x2 := (math.Cos(angleRadian) * distanceInsectBack) - (math.Sin(angleRadian) * wideWailing) + c.x - charSize/2
+		y2 := (math.Sin(angleRadian) * distanceInsectBack) + (math.Cos(angleRadian) * wideWailing) + c.y
+		if index == 0 {
+			pathW.MoveTo(float32(x1), float32(y1))
+			pathW.LineTo(float32(x1), float32(y1))
 
-		x2:=  c.x - charSize
-		y2:=  c.y + wide/2
-
-		//debug with squares
-		//x1 y1
-		img := ebiten.NewImage(5, 5)
-		img.Fill(color.White)
-		opt := &ebiten.DrawImageOptions{}
-		opt.GeoM.Translate(x1,y1)
-		screen.DrawImage(img, opt)
-
-		img2 := ebiten.NewImage(5, 5)
-		img2.Fill(color.RGBA{0xff, 0, 0, 0xff})
-		opt2 := &ebiten.DrawImageOptions{}
-		opt2.GeoM.Translate(x2,y2)
-		screen.DrawImage(img2, opt2)
-		//end debug
-
-	if index == 0 {
-		pathW.MoveTo(float32(x1), float32(y1))
-		pathW.LineTo(float32(x1), float32(y1))
-
-		arr = append(arr, coordinate{x: x2 , y: y2})
-		continue
-	}
+			arr = append(arr, coordinate{x: x2, y: y2})
+			continue
+		}
 
 		pathW.LineTo(float32(x1), float32(y1))
-		arr = append(arr, coordinate{x: x2 , y: y2})	
+		arr = append(arr, coordinate{x: x2, y: y2})
 	}
 
 	/*pathW.MoveTo(80, 170)
@@ -163,31 +159,28 @@ func drawWeaving(wide, angle float64, weaves []weavePoint, screen *ebiten.Image)
 	emptyImage.Fill(color.White)
 	emptySubImage := emptyImage.SubImage(image.Rect(1, 1, 2, 2)).(*ebiten.Image)
 
-	
-
 	op := &ebiten.DrawTrianglesOptions{
 		FillRule: ebiten.EvenOdd,
 	}
 
 	vs, is := pathW.AppendVerticesAndIndicesForFilling(nil, nil)
 	for i := range vs {
+		//rgba(22, 160, 133, 1)
 		vs[i].SrcX = 1
 		vs[i].SrcY = 1
-		vs[i].ColorR = 0xdb / float32(0xff)
-		vs[i].ColorG = 0x56 / float32(0xff)
-		vs[i].ColorB = 0x20 / float32(0xff)
-		vs[i].ColorA = 0.5
+		vs[i].ColorR = 0x16 / float32(0xff)
+		vs[i].ColorG = 0xa0 / float32(0xff)
+		vs[i].ColorB = 0x85 / float32(0xff)
+		vs[i].ColorA = 0.45
 	}
 	screen.DrawTriangles(vs, is, emptySubImage, op)
-
-
 
 	/*for _, c := range arr {
 		opt := &ebiten.DrawImageOptions{}
 		opt.GeoM.Translate(c.x,c.y)
 		screen.DrawImage(emptyImage, opt)
 	}*/
-	
+
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
@@ -206,7 +199,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y))
 	//weaves
 	if len(g.mainCharacter.weave.weavePoints) > 0 {
-		drawWeaving(10, g.mainCharacter.angle, g.mainCharacter.weave.weavePoints, screen)
+		drawWeaving(10, g.mainCharacter.weave.weavePoints, screen)
 	}
 
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n , charX %f charY %f, charAngle %f", ebiten.CurrentTPS(), g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.angle))
@@ -236,7 +229,7 @@ func main() {
 			},
 			speed:      1.5,
 			angle:      0,
-			angleSpeed: 1,
+			angleSpeed: 3,
 			size:       40,
 			weave: weave{
 				isWeaving:   false,
