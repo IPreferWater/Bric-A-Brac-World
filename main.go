@@ -59,7 +59,7 @@ func (g *Game) Update() error {
 	g.frame++
 	weaveUpdate := false
 	//TODO remove weaveUpdate, do it at each frame
-	if g.frame%1 == 0 {
+	if g.frame%60 == 0 {
 		weaveUpdate = true
 		g.frame = 0
 	}
@@ -107,18 +107,33 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func drawWeaving(xChar, yChar, angle float64, weaves []weavePoint, screen *ebiten.Image) {
+func drawWeaving(wide, angle float64, weaves []weavePoint, screen *ebiten.Image) {
 	arr := make([]coordinate, 0)
 
-	//charSize := 10
+	charSize := float64(40)
 	var pathW vector.Path
 	for index, c := range weaves {
 
-		x1:=  c.x-4 + math.Cos(c.angle)/360 
-		y1:=  c.y-4 + math.Sin(c.angle)/360 
+		x1:=  c.x - charSize
+		y1:=  c.y - wide/2
 
-		x2:=  c.x+4 + math.Cos(c.angle)/360 
-		y2:=  c.y+4 + math.Sin(c.angle)/360 
+		x2:=  c.x - charSize
+		y2:=  c.y + wide/2
+
+		//debug with squares
+		//x1 y1
+		img := ebiten.NewImage(5, 5)
+		img.Fill(color.White)
+		opt := &ebiten.DrawImageOptions{}
+		opt.GeoM.Translate(x1,y1)
+		screen.DrawImage(img, opt)
+
+		img2 := ebiten.NewImage(5, 5)
+		img2.Fill(color.RGBA{0xff, 0, 0, 0xff})
+		opt2 := &ebiten.DrawImageOptions{}
+		opt2.GeoM.Translate(x2,y2)
+		screen.DrawImage(img2, opt2)
+		//end debug
 
 	if index == 0 {
 		pathW.MoveTo(float32(x1), float32(y1))
@@ -127,8 +142,8 @@ func drawWeaving(xChar, yChar, angle float64, weaves []weavePoint, screen *ebite
 		arr = append(arr, coordinate{x: x2 , y: y2})
 		continue
 	}
-		pathW.LineTo(float32(x1), float32(y1))
 
+		pathW.LineTo(float32(x1), float32(y1))
 		arr = append(arr, coordinate{x: x2 , y: y2})	
 	}
 
@@ -148,6 +163,8 @@ func drawWeaving(xChar, yChar, angle float64, weaves []weavePoint, screen *ebite
 	emptyImage.Fill(color.White)
 	emptySubImage := emptyImage.SubImage(image.Rect(1, 1, 2, 2)).(*ebiten.Image)
 
+	
+
 	op := &ebiten.DrawTrianglesOptions{
 		FillRule: ebiten.EvenOdd,
 	}
@@ -159,8 +176,18 @@ func drawWeaving(xChar, yChar, angle float64, weaves []weavePoint, screen *ebite
 		vs[i].ColorR = 0xdb / float32(0xff)
 		vs[i].ColorG = 0x56 / float32(0xff)
 		vs[i].ColorB = 0x20 / float32(0xff)
+		vs[i].ColorA = 0.5
 	}
 	screen.DrawTriangles(vs, is, emptySubImage, op)
+
+
+
+	/*for _, c := range arr {
+		opt := &ebiten.DrawImageOptions{}
+		opt.GeoM.Translate(c.x,c.y)
+		screen.DrawImage(emptyImage, opt)
+	}*/
+	
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
@@ -179,7 +206,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y))
 	//weaves
 	if len(g.mainCharacter.weave.weavePoints) > 0 {
-		drawWeaving(g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.angle, g.mainCharacter.weave.weavePoints, screen)
+		drawWeaving(10, g.mainCharacter.angle, g.mainCharacter.weave.weavePoints, screen)
 	}
 
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n , charX %f charY %f, charAngle %f", ebiten.CurrentTPS(), g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.angle))
@@ -189,7 +216,7 @@ func drawCharacter(g *Game) (*ebiten.Image, *ebiten.DrawImageOptions) {
 	opChar := &ebiten.DrawImageOptions{}
 	opChar.GeoM.Translate(-(g.mainCharacter.size / 2), -(g.mainCharacter.size / 2))
 	opChar.GeoM.Rotate(g.mainCharacter.angle * 2 * math.Pi / 360)
-	opChar.GeoM.Translate(float64(g.mainCharacter.position.x), float64(g.mainCharacter.position.y)-(g.mainCharacter.size/2))
+	opChar.GeoM.Translate(float64(g.mainCharacter.position.x)-g.mainCharacter.size/2, float64(g.mainCharacter.position.y))
 
 	return insectImage, opChar
 }
