@@ -21,6 +21,7 @@ func checkAction(g *Game) {
 	if len(keysPressed) == 0 {
 		return
 	}
+	isKeyArrowUp := contains(keysPressed, ebiten.KeyArrowUp)
 	//key w = wait
 	if contains(keysPressed, ebiten.KeyW) {
 		return
@@ -30,16 +31,16 @@ func checkAction(g *Game) {
 	//	g.mainCharacter.position.y += g.mainCharacter.speed
 	}
 
-	if contains(keysPressed, ebiten.KeyArrowUp) {
+	if isKeyArrowUp {
 		g.mainCharacter.position.x += math.Cos(g.mainCharacter.angle*math.Pi/180.0)*g.mainCharacter.speed
 		g.mainCharacter.position.y += math.Sin(g.mainCharacter.angle*math.Pi/180.0)*g.mainCharacter.speed
 	}
 
-	if contains(keysPressed, ebiten.KeyArrowLeft) {
+	if contains(keysPressed, ebiten.KeyArrowLeft) && !isWeavingAndGoingUp(g.mainCharacter.weave.isWeaving, isKeyArrowUp) {
 		g.mainCharacter.angle -= g.mainCharacter.angleSpeed
 	}
 
-	if contains(keysPressed, ebiten.KeyArrowRight) {
+	if contains(keysPressed, ebiten.KeyArrowRight) && !isWeavingAndGoingUp(g.mainCharacter.weave.isWeaving, isKeyArrowUp) {
 		g.mainCharacter.angle += g.mainCharacter.angleSpeed
 	}
 
@@ -48,4 +49,8 @@ func checkAction(g *Game) {
 	} else {
 		g.mainCharacter.weave.isWeaving = false
 	}
+}
+
+func isWeavingAndGoingUp(isWeaving bool, isGoingUp bool) bool{
+	return isWeaving && isGoingUp
 }

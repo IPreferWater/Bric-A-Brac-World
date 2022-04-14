@@ -89,6 +89,12 @@ func (g *Game) Update() error {
 			}
 			previous := m.weave.weavePoints[indexlastWeavePoint]
 			//if same angle, just continue the vector
+
+			//if the player didn't moove
+			if previous.x == m.position.x && previous.y == m.position.y {
+				return nil
+			}
+
 			if previous.angle == m.angle {
 				g.mainCharacter.weave.weavePoints[indexlastWeavePoint].x = m.position.x
 				g.mainCharacter.weave.weavePoints[indexlastWeavePoint].y = m.position.y
@@ -96,7 +102,12 @@ func (g *Game) Update() error {
 			}
 
 			// if angle changed, just add the new point
+			//we add 2 points, one for the start of the new rectangle, one for the end
 			g.mainCharacter.weave.weavePoints = append(m.weave.weavePoints, weavePoint{
+				x:     m.position.x,
+				y:     m.position.y,
+				angle: m.angle,
+			},weavePoint{
 				x:     m.position.x,
 				y:     m.position.y,
 				angle: m.angle,
@@ -107,35 +118,35 @@ func (g *Game) Update() error {
 	return nil
 }
 
-//TODO
-/*func getRotationCoordonates(x,y,angle, xDistanceFromOrigin, yDistanceFromOrigin, recenterValue float64)(float64,float64) {
-	angleRadian := angle * (math.Pi / 180)
-	return (math.Cos(angleRadian) * xDistanceFromOrigin) - (math.Sin(angleRadian) * yDistanceFromOrigin) + x - recenterValue, (math.Sin(angleRadian) * xDistanceFromOrigin) + (math.Cos(angleRadian) * yDistanceFromOrigin) + y
-}*/
 func drawWeaving(wide float64, weaves []weavePoint, screen *ebiten.Image) {
 	arr := make([]coordinate, 0)
 
 	charSize := float64(40)
 	var pathW vector.Path
 	wideWailing := float64(10)
-		distanceInsectBack := float64(-20)
+		distanceInsectBack := float64(-2)
 	for index, c := range weaves {
 
 		//formula https://gamefromscratch.com/gamedev-math-recipes-rotating-one-point-around-another-point/
 		angleRadian := c.angle * (math.Pi / 180)
-	//	addPointForDebugWailing(angleRadian, c.x, c.y, charSize, distanceInsectBack, wideWailing, screen)
-		// -charSize/2 because we need to recenter the point in the middle of the image
-	/*	x1, y1 := getRotationCoordonates(c.x,c.y,c.angle,distanceInsectBack,-wideWailing, -charSize/2)
-		x2, y2 := getRotationCoordonates(c.x,c.y,c.angle,distanceInsectBack,wideWailing, -charSize/2)*/
+		//addPointForDebugWailing(angleRadian, c.x, c.y, charSize, distanceInsectBack, wideWailing, screen)
+
 		x1 := (math.Cos(angleRadian) * distanceInsectBack) - (math.Sin(angleRadian) * -wideWailing) + c.x - charSize/2
 		y1 := (math.Sin(angleRadian) * distanceInsectBack) + (math.Cos(angleRadian) * -wideWailing) + c.y
 		x2 := (math.Cos(angleRadian) * distanceInsectBack) - (math.Sin(angleRadian) * wideWailing) + c.x - charSize/2
 		y2 := (math.Sin(angleRadian) * distanceInsectBack) + (math.Cos(angleRadian) * wideWailing) + c.y
+
 		if index == 0 {
 			pathW.MoveTo(float32(x1), float32(y1))
 			pathW.LineTo(float32(x1), float32(y1))
 
 			arr = append(arr, coordinate{x: x2, y: y2})
+
+			
+			x0 := (math.Cos(angleRadian) * distanceInsectBack) - (math.Sin(angleRadian)) + c.x - charSize/2
+			y0 := (math.Sin(angleRadian) * distanceInsectBack) + (math.Cos(angleRadian)) + c.y
+			getStartingPointImage(x0,y0, angleRadian, distanceInsectBack, charSize, screen)
+			
 			continue
 		}
 
@@ -143,17 +154,22 @@ func drawWeaving(wide float64, weaves []weavePoint, screen *ebiten.Image) {
 		arr = append(arr, coordinate{x: x2, y: y2})
 	}
 
-	/*pathW.MoveTo(80, 170)
-	pathW.LineTo(100, 170)
-	pathW.QuadTo(150, 157.5, 100, 120)
-	pathW.LineTo(90, 130)
-	pathW.QuadTo(140, 157.5, 100, 160)
-	pathW.LineTo(100, 160)
-	pathW.LineTo(80, 170)*/
-
 	for i := len(arr) - 1; i >= 0; i-- {
 		pathW.LineTo(float32(arr[i].x), float32(arr[i].y))
 	}
+
+	/*for index, w := range weaves {
+		//√(x2−x1)2+(y2−y1)2
+		if index ==0 {
+			//skip
+			continue
+		}
+		wr := arr[index-1]
+		distance := math.Sqrt(math.Pow(wr.x-w.x,2)+math.Pow(wr.y-w.y,2))
+		
+		//fmt.Printf("i %d x1 %f y1 %f x2 %f y2 %f angle %f distance %f\n", index, w.x, w.y, arr[index].x, arr[index].y, w.angle, distance)
+	}
+	fmt.Println("***")*/
 
 	emptyImage := ebiten.NewImage(3, 3)
 	emptyImage.Fill(color.White)
@@ -174,13 +190,25 @@ func drawWeaving(wide float64, weaves []weavePoint, screen *ebiten.Image) {
 		vs[i].ColorA = 0.45
 	}
 	screen.DrawTriangles(vs, is, emptySubImage, op)
+}
 
-	/*for _, c := range arr {
-		opt := &ebiten.DrawImageOptions{}
-		opt.GeoM.Translate(c.x,c.y)
-		screen.DrawImage(emptyImage, opt)
-	}*/
 
+
+func getStartingPointImage(x,y,angle, distanceInsectBack, charSize float64, screen *ebiten.Image){
+	purpleClr := color.RGBA{255, 0, 255, 255}
+	
+	radius64 := float64(20)
+	minAngle := math.Acos(1 - 1/radius64)
+
+	for angle := float64(0); angle <= 360; angle += minAngle {
+		xDelta := radius64 * math.Cos(angle)
+		yDelta := radius64 * math.Sin(angle)
+
+		x1 := int(math.Round(float64(x) + xDelta))
+		y1 := int(math.Round(float64(y) + yDelta))
+
+		screen.Set(x1, y1, purpleClr)
+	}
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
