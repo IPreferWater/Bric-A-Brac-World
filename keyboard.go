@@ -44,11 +44,25 @@ func checkAction(g *Game) {
 		g.mainCharacter.angle += g.mainCharacter.angleSpeed
 	}
 
-	if contains(keysPressed, ebiten.KeySpace) {
+	/*if contains(keysPressed, ebiten.KeySpace) {
 		g.mainCharacter.weave.isWeaving = true
 	} else {
 		g.mainCharacter.weave.isWeaving = false
-	}
+	}*/
+	if contains(keysPressed, ebiten.KeySpace) {
+		if g.bubbleShootCooldown {
+			return
+		}
+		g.bubbles = append(g.bubbles, bubble{
+			angle:      g.mainCharacter.angle,
+			speed:      3,
+			coordinate: coordinate{
+				x: g.mainCharacter.position.x,
+				y: g.mainCharacter.position.y,
+			},
+		})
+		g.bubbleShootCooldown = true
+	} 
 }
 
 func isWeavingAndGoingUp(isWeaving bool, isGoingUp bool) bool{

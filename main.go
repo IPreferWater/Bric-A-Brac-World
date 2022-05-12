@@ -25,6 +25,7 @@ const (
 var (
 	tilesImage  *ebiten.Image
 	insectImage *ebiten.Image
+	bubbleBlueImage *ebiten.Image
 )
 
 func init() {
@@ -38,30 +39,59 @@ func init() {
 		log.Fatal(err)
 	}
 
+	bubbleBlueImageEbitenImage, _, err := ebitenutil.NewImageFromFile("./res/bubble_blue.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	tilesImage = tilesEbitenImage
 	insectImage = insectImageEbitenImage
+	bubbleBlueImage = bubbleBlueImageEbitenImage
 }
 
 type Game struct {
-	layers        [][]int
-	mapCenterX    float64
-	mapCenterY    float64
-	mainCharacter mainCharacter
-	state         State
-	size          float64
-	worldSpeed    float64
-	frame         int
+	mapCenterX               float64
+	mapCenterY               float64
+	mainCharacter            mainCharacter
+	state                    State
+	size                     float64
+	worldSpeed               float64
+	frame                    int
+	bubbles                  []bubble
+	bubbleShootCooldownFrame int
+	bubbleShootCooldown      bool
+	bubblesLayer             [10][20]*bubble
+	boardX                   int
+	boardY                   int
+}
+
+type bubble struct {
+	angle      float64
+	speed      int
+	coordinate coordinate
+}
+
+func (g *Game) mooveBubbles() {
+	for i, b := range g.bubbles {
+		angleRadian := b.angle * (math.Pi / 180)
+		b.coordinate.x = b.coordinate.x + math.Cos(angleRadian)*float64(b.speed)
+		b.coordinate.y = b.coordinate.y + math.Sin(angleRadian)*float64(b.speed)
+		g.bubbles[i] = b
+	}
 }
 
 func (g *Game) Update() error {
 	checkAction(g)
+	g.mooveBubbles()
+	g.CheckBubblesColisions()
 
 	g.frame++
 	weaveUpdate := false
-	//TODO remove weaveUpdate, do it at each frame
-	if g.frame%1 == 0 {
-		weaveUpdate = true
+	if g.frame%g.bubbleShootCooldownFrame == 0 && g.frame != 0 {
+		g.bubbleShootCooldown = false
 		g.frame = 0
+
+		fmt.Println(fmt.Println(g.bubblesLayer))
 	}
 
 	m := g.mainCharacter
@@ -107,7 +137,7 @@ func (g *Game) Update() error {
 				x:     m.position.x,
 				y:     m.position.y,
 				angle: m.angle,
-			},weavePoint{
+			}, weavePoint{
 				x:     m.position.x,
 				y:     m.position.y,
 				angle: m.angle,
@@ -124,7 +154,7 @@ func drawWeaving(wide float64, weaves []weavePoint, screen *ebiten.Image) {
 	charSize := float64(40)
 	var pathW vector.Path
 	wideWailing := float64(10)
-		distanceInsectBack := float64(-2)
+	distanceInsectBack := float64(-2)
 	for index, c := range weaves {
 
 		//formula https://gamefromscratch.com/gamedev-math-recipes-rotating-one-point-around-another-point/
@@ -142,11 +172,10 @@ func drawWeaving(wide float64, weaves []weavePoint, screen *ebiten.Image) {
 
 			arr = append(arr, coordinate{x: x2, y: y2})
 
-			
 			x0 := (math.Cos(angleRadian) * distanceInsectBack) - (math.Sin(angleRadian)) + c.x - charSize/2
 			y0 := (math.Sin(angleRadian) * distanceInsectBack) + (math.Cos(angleRadian)) + c.y
-			getStartingPointImage(x0,y0, angleRadian, distanceInsectBack, charSize, screen)
-			
+			getStartingPointImage(x0, y0, angleRadian, distanceInsectBack, charSize, screen)
+
 			continue
 		}
 
@@ -166,7 +195,7 @@ func drawWeaving(wide float64, weaves []weavePoint, screen *ebiten.Image) {
 		}
 		wr := arr[index-1]
 		distance := math.Sqrt(math.Pow(wr.x-w.x,2)+math.Pow(wr.y-w.y,2))
-		
+
 		//fmt.Printf("i %d x1 %f y1 %f x2 %f y2 %f angle %f distance %f\n", index, w.x, w.y, arr[index].x, arr[index].y, w.angle, distance)
 	}
 	fmt.Println("***")*/
@@ -192,11 +221,9 @@ func drawWeaving(wide float64, weaves []weavePoint, screen *ebiten.Image) {
 	screen.DrawTriangles(vs, is, emptySubImage, op)
 }
 
-
-
-func getStartingPointImage(x,y,angle, distanceInsectBack, charSize float64, screen *ebiten.Image){
+func getStartingPointImage(x, y, angle, distanceInsectBack, charSize float64, screen *ebiten.Image) {
 	purpleClr := color.RGBA{255, 0, 255, 255}
-	
+
 	radius64 := float64(20)
 	minAngle := math.Acos(1 - 1/radius64)
 
@@ -211,6 +238,30 @@ func getStartingPointImage(x,y,angle, distanceInsectBack, charSize float64, scre
 	}
 }
 
+func (g *Game) DrawBoard(screen *ebiten.Image) {
+
+	img := ebiten.NewImage(g.boardX, g.boardY)
+	ebitenutil.DrawRect(img, 0, 0, float64(g.boardX), float64(g.boardY), color.RGBA{0xff, 0, 0, 0xff})
+	opBoard  := &ebiten.DrawImageOptions{}
+
+	opBoard.GeoM.Translate(screenWidth/2-float64(g.boardX/2), 50)
+
+	screen.DrawImage(img,opBoard)
+}
+func (g *Game) DrawBoardLayers(screen *ebiten.Image) {
+
+	for _, l := range g.bubblesLayer {
+		for j, b := range l {
+			if b == nil{
+				continue
+			}
+			_, boardStartY := float64(screenWidth/2-float64(g.boardX/2)),float64(50)
+			opB  := &ebiten.DrawImageOptions{}
+			opB.GeoM.Translate(float64(j*32), boardStartY)
+			screen.DrawImage(bubbleBlueImage,opB)
+		}
+	}
+}
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{
 		R: 13,
@@ -218,8 +269,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		B: 23,
 		A: 0,
 	})
+	g.DrawBoard(screen)
+	
 	characterDraw, charOpts := drawCharacter(g)
 	screen.DrawImage(characterDraw, charOpts)
+	
 
 	square := ebiten.NewImage(16, 16)
 	opChar := &ebiten.DrawImageOptions{}
@@ -230,6 +284,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		drawWeaving(10, g.mainCharacter.weave.weavePoints, screen)
 	}
 
+	//buubles
+	for _, b := range g.bubbles {
+		opBubble := &ebiten.DrawImageOptions{}
+		opBubble.GeoM.Translate(b.coordinate.x, b.coordinate.y)
+		screen.DrawImage(bubbleBlueImage, opBubble)
+	}
+
+	g.DrawBoardLayers(screen)
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\n , charX %f charY %f, charAngle %f", ebiten.CurrentTPS(), g.mainCharacter.position.x, g.mainCharacter.position.y, g.mainCharacter.angle))
 }
 
@@ -248,15 +310,17 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 func main() {
 
+	var bubblesLayer [10][20]*bubble
+
 	g := &Game{
 		state: WaitPlayerAction,
 		mainCharacter: mainCharacter{
 			position: coordinate{
 				x: screenWidth / 2,
-				y: screenHeight / 2,
+				y: screenHeight - 20,
 			},
 			speed:      1.5,
-			angle:      0,
+			angle:      270,
 			angleSpeed: 3,
 			size:       40,
 			weave: weave{
@@ -264,8 +328,13 @@ func main() {
 				weavePoints: make([]weavePoint, 0),
 			},
 		},
-
-		worldSpeed: 1,
+		bubbles:                  make([]bubble, 0),
+		bubbleShootCooldownFrame: 30,
+		bubbleShootCooldown:      false,
+		bubblesLayer:             bubblesLayer,
+		boardX:                   500,
+		boardY:                   600,
+		worldSpeed:               1,
 	}
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)
