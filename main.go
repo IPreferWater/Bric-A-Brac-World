@@ -23,8 +23,8 @@ const (
 )
 
 var (
-	tilesImage  *ebiten.Image
-	insectImage *ebiten.Image
+	tilesImage      *ebiten.Image
+	insectImage     *ebiten.Image
 	bubbleBlueImage *ebiten.Image
 )
 
@@ -61,8 +61,10 @@ type Game struct {
 	bubbleShootCooldownFrame int
 	bubbleShootCooldown      bool
 	bubblesLayer             [10][20]*bubble
-	boardX                   int
-	boardY                   int
+	boardXStart                   int
+	boardYStart                   int
+	boardWidth               int
+	boardHeight              int
 }
 
 type bubble struct {
@@ -90,8 +92,6 @@ func (g *Game) Update() error {
 	if g.frame%g.bubbleShootCooldownFrame == 0 && g.frame != 0 {
 		g.bubbleShootCooldown = false
 		g.frame = 0
-
-		fmt.Println(fmt.Println(g.bubblesLayer))
 	}
 
 	m := g.mainCharacter
@@ -240,25 +240,25 @@ func getStartingPointImage(x, y, angle, distanceInsectBack, charSize float64, sc
 
 func (g *Game) DrawBoard(screen *ebiten.Image) {
 
-	img := ebiten.NewImage(g.boardX, g.boardY)
-	ebitenutil.DrawRect(img, 0, 0, float64(g.boardX), float64(g.boardY), color.RGBA{0xff, 0, 0, 0xff})
-	opBoard  := &ebiten.DrawImageOptions{}
+	img := ebiten.NewImage(g.boardWidth, g.boardHeight)
+	ebitenutil.DrawRect(img, 0, 0, float64(g.boardWidth), float64(g.boardHeight), color.RGBA{0xff, 0, 0, 0xff})
+	opBoard := &ebiten.DrawImageOptions{}
 
-	opBoard.GeoM.Translate(screenWidth/2-float64(g.boardX/2), 50)
+	opBoard.GeoM.Translate(float64(g.boardXStart), 50)
 
-	screen.DrawImage(img,opBoard)
+	screen.DrawImage(img, opBoard)
 }
 func (g *Game) DrawBoardLayers(screen *ebiten.Image) {
 
 	for _, l := range g.bubblesLayer {
 		for j, b := range l {
-			if b == nil{
+			if b == nil {
 				continue
 			}
-			_, boardStartY := float64(screenWidth/2-float64(g.boardX/2)),float64(50)
-			opB  := &ebiten.DrawImageOptions{}
+			_, boardStartY := float64(screenWidth/2-float64(g.boardWidth/2)), float64(50)
+			opB := &ebiten.DrawImageOptions{}
 			opB.GeoM.Translate(float64(j*32), boardStartY)
-			screen.DrawImage(bubbleBlueImage,opB)
+			screen.DrawImage(bubbleBlueImage, opB)
 		}
 	}
 }
@@ -270,10 +270,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		A: 0,
 	})
 	g.DrawBoard(screen)
-	
+
 	characterDraw, charOpts := drawCharacter(g)
 	screen.DrawImage(characterDraw, charOpts)
-	
 
 	square := ebiten.NewImage(16, 16)
 	opChar := &ebiten.DrawImageOptions{}
@@ -311,6 +310,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 func main() {
 
 	var bubblesLayer [10][20]*bubble
+	
 
 	g := &Game{
 		state: WaitPlayerAction,
@@ -332,10 +332,14 @@ func main() {
 		bubbleShootCooldownFrame: 30,
 		bubbleShootCooldown:      false,
 		bubblesLayer:             bubblesLayer,
-		boardX:                   500,
-		boardY:                   600,
+		boardWidth:                   500,
+		boardHeight:                   600,
+		boardXStart: 0,
+		boardYStart: 0,
 		worldSpeed:               1,
 	}
+
+	g.boardXStart = screenWidth/2 - g.boardWidth/2
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Bric-A-Brac-World")

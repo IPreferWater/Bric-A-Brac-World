@@ -6,6 +6,10 @@ func (g *Game) CheckBubblesColisions() error {
 
 		//check colision in table
 
+		if b.coordinate.x<= float64(g.boardXStart) {
+			g.bubbles[i].angle+=90
+		}
+
 		if b.coordinate.y <= 50 {
 			var xLayer int
 			xLayer = int(b.coordinate.x)/32
