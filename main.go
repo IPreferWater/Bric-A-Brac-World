@@ -320,7 +320,7 @@ func main() {
 				y: screenHeight - 20,
 			},
 			speed:      1.5,
-			angle:      270,
+			angle:      90,
 			angleSpeed: 3,
 			size:       40,
 			weave: weave{
