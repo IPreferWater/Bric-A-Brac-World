@@ -5,6 +5,8 @@ import (
 	"math"
 )
 
+
+
 func (g *Game) CheckBubblesColisions() error {
 
 	for i, b := range g.bubbles {
@@ -41,19 +43,6 @@ func (g *Game) CheckBubblesColisions() error {
 
 				return nil
 			}
-			}
-		}
-		if g.bubblesLayer[yLayer][xLayer] != nil {
-			bubbleToCheck := g.bubblesLayer[yLayer][xLayer]
-			dx := b.coordinate.x - bubbleToCheck.coordinate.x
-			dy := b.coordinate.y - bubbleToCheck.coordinate.y
-			distance := math.Sqrt((dx * dx) + (dy * dy))
-			if distance < 64 {
-				fmt.Println("boom")
-				g.bubblesLayer[yLayer+1][xLayer] = &b
-				g.bubbles = popBubble(g.bubbles, i)
-
-				return nil
 			}
 		}
 

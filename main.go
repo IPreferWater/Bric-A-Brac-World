@@ -256,7 +256,12 @@ func (g *Game) DrawBoardLayers(screen *ebiten.Image) {
 				continue
 			}
 			opB := &ebiten.DrawImageOptions{}
-			opB.GeoM.Translate(float64(j*32), float64(i*32))
+			if i%2==0{
+				opB.GeoM.Translate(float64(j*32), float64(i*32))
+			}else{
+				opB.GeoM.Translate(float64(j*32)+16, float64(i*32))
+			}
+			
 			screen.DrawImage(bubbleBlueImage, opB)
 		}
 	}
