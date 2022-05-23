@@ -61,8 +61,8 @@ type Game struct {
 	bubbleShootCooldownFrame int
 	bubbleShootCooldown      bool
 	bubblesLayer             [25][25]*bubble
-	boardXStart                   int
-	boardYStart                   int
+	boardXStart              int
+	boardYStart              int
 	boardWidth               int
 	boardHeight              int
 }
@@ -89,7 +89,7 @@ func (g *Game) Update() error {
 
 	g.frame++
 	weaveUpdate := false
-	if g.frame%g.bubbleShootCooldownFrame == 0 && g.frame != 0 {
+	if g.frame % g.bubbleShootCooldownFrame == 0  {
 		g.bubbleShootCooldown = false
 		g.frame = 0
 	}
@@ -244,7 +244,7 @@ func (g *Game) DrawBoard(screen *ebiten.Image) {
 	ebitenutil.DrawRect(img, 0, 0, float64(g.boardWidth), float64(g.boardHeight), color.RGBA{0xff, 0, 0, 0xff})
 	opBoard := &ebiten.DrawImageOptions{}
 
-	opBoard.GeoM.Translate(float64(g.boardXStart), float64(screenHeight - g.boardHeight))
+	opBoard.GeoM.Translate(float64(g.boardXStart), float64(screenHeight-g.boardHeight))
 
 	screen.DrawImage(img, opBoard)
 }
@@ -256,12 +256,10 @@ func (g *Game) DrawBoardLayers(screen *ebiten.Image) {
 				continue
 			}
 			opB := &ebiten.DrawImageOptions{}
+			opB.GeoM.Translate((float64(j*32)-16)+float64(g.boardXStart), float64(i*32)-16)
 			if i%2==0{
-				opB.GeoM.Translate(float64(j*32), float64(i*32))
-			}else{
-				opB.GeoM.Translate(float64(j*32)+16, float64(i*32))
-			}
-			
+				opB.GeoM.Translate(16, 0)
+			}		
 			screen.DrawImage(bubbleBlueImage, opB)
 		}
 	}
@@ -290,7 +288,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	//buubles
 	for _, b := range g.bubbles {
 		opBubble := &ebiten.DrawImageOptions{}
-		opBubble.GeoM.Translate(b.coordinate.x, b.coordinate.y)
+		opBubble.GeoM.Translate(b.coordinate.x-16, b.coordinate.y-16)
 		screen.DrawImage(bubbleBlueImage, opBubble)
 	}
 
@@ -314,7 +312,6 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 func main() {
 
 	var bubblesLayer [25][25]*bubble
-	
 
 	g := &Game{
 		state: WaitPlayerAction,
@@ -324,7 +321,7 @@ func main() {
 				y: screenHeight - 20,
 			},
 			speed:      1.5,
-			angle:      90,
+			angle:      270,
 			angleSpeed: 3,
 			size:       40,
 			weave: weave{
@@ -336,15 +333,15 @@ func main() {
 		bubbleShootCooldownFrame: 30,
 		bubbleShootCooldown:      false,
 		bubblesLayer:             bubblesLayer,
-		boardWidth:                   500,
-		boardHeight:                   480,
-		boardXStart: 0,
-		boardYStart: 0,
-		worldSpeed:               1,
+		boardWidth:               500,
+		boardHeight:              480,
+		boardXStart:              0,
+		boardYStart:              0,
+		worldSpeed:               0.5,
 	}
 
 	g.boardXStart = screenWidth/2 - g.boardWidth/2
-	g.boardYStart = screenHeight- g.boardHeight
+	g.boardYStart = screenHeight - g.boardHeight
 	fmt.Println(g.boardYStart)
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)

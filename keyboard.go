@@ -28,27 +28,27 @@ func checkAction(g *Game) {
 	}
 
 	if contains(keysPressed, ebiten.KeyArrowDown) {
-	//	g.mainCharacter.position.y += g.mainCharacter.speed
+		//	g.mainCharacter.position.y += g.mainCharacter.speed
 	}
 
 	if isKeyArrowUp {
-		g.mainCharacter.position.x += math.Cos(g.mainCharacter.angle*math.Pi/180.0)*g.mainCharacter.speed
-		g.mainCharacter.position.y += math.Sin(g.mainCharacter.angle*math.Pi/180.0)*g.mainCharacter.speed
+		g.mainCharacter.position.x += math.Cos(g.mainCharacter.angle*math.Pi/180.0) * g.mainCharacter.speed
+		g.mainCharacter.position.y += math.Sin(g.mainCharacter.angle*math.Pi/180.0) * g.mainCharacter.speed
 	}
 
 	if contains(keysPressed, ebiten.KeyArrowLeft) && !isWeavingAndGoingUp(g.mainCharacter.weave.isWeaving, isKeyArrowUp) {
-		newAngle:= g.mainCharacter.angle - g.mainCharacter.angleSpeed
-		if newAngle<=-360 {
-			newAngle=0
+		newAngle := g.mainCharacter.angle - g.mainCharacter.angleSpeed
+		if newAngle <= -360 {
+			newAngle = 0
 		}
 		g.mainCharacter.angle = newAngle
 	}
 
 	if contains(keysPressed, ebiten.KeyArrowRight) && !isWeavingAndGoingUp(g.mainCharacter.weave.isWeaving, isKeyArrowUp) {
-		newAngle:= g.mainCharacter.angle+ g.mainCharacter.angleSpeed
+		newAngle := g.mainCharacter.angle + g.mainCharacter.angleSpeed
 		g.mainCharacter.angle += g.mainCharacter.angleSpeed
-		if newAngle>=360 {
-			newAngle=0
+		if newAngle >= 360 {
+			newAngle = 0
 		}
 		g.mainCharacter.angle = newAngle
 	}
@@ -62,18 +62,20 @@ func checkAction(g *Game) {
 		if g.bubbleShootCooldown {
 			return
 		}
+		g.bubbleShootCooldown = true
+
 		g.bubbles = append(g.bubbles, bubble{
-			angle:      g.mainCharacter.angle,
-			speed:      3,
+			angle: g.mainCharacter.angle,
+			speed: 3,
 			coordinate: coordinate{
 				x: g.mainCharacter.position.x,
 				y: g.mainCharacter.position.y,
 			},
 		})
-		g.bubbleShootCooldown = true
-	} 
+		
+	}
 }
 
-func isWeavingAndGoingUp(isWeaving bool, isGoingUp bool) bool{
+func isWeavingAndGoingUp(isWeaving bool, isGoingUp bool) bool {
 	return isWeaving && isGoingUp
 }
